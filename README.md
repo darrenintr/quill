@@ -7,8 +7,9 @@
 Quill is **iPad-first**: the layout adapts from a phone-sized bottom nav,
 to a tablet-sized two-pane NavigationRail view, to a full desktop shell.
 
-## ✨ Features (Phase 1 — MVP)
+## ✨ Features
 
+### Phase 1 — MVP
 - 📝 **Rich-text notes** powered by `flutter_quill` (full toolbar: headings,
   lists, check lists, code blocks, quotes, formatting).
 - 🗂 **Folders & tags** — drag notes into folders, label them with tags, see
@@ -25,11 +26,55 @@ to a tablet-sized two-pane NavigationRail view, to a full desktop shell.
   preview text generated for fast list rendering.
 - 🎨 **Brand seed** `#6750A4` (ink violet), with `dynamic_color` override.
 
-## 🚧 Roadmap (Phases 2 & 3)
+### Phase 2 — Handwriting
+- ✍️ **Apple Pencil canvas** — pressure-aware, tilt-aware, palm-rejection.
+  `perfect_freehand` produces vector strokes that stay crisp at any zoom.
+- 🖌 **Brush picker** — pen, pencil, highlighter, eraser · 8 colours ·
+  size slider.
+- 📓 **Multi-page notebooks** — top-bar page indicator, add / delete /
+  navigate. Each page is its own Drift row, so a single notebook scales
+  to hundreds of pages without slowing the dashboard.
+- 🔀 **Tab switching** — every note has a `kind` (`text` or `drawing`).
+  The editor routes to the Quill rich-text view or the notebook canvas.
+- 🆕 **New drawing** entry from the dashboard's + menu.
 
-- [ ] ✍️ Apple Pencil drawing canvas with pressure + palm rejection
-- [ ] 📄 PDF import + annotation overlay
-- [ ] ☁️ Sync: WebDAV first, then iCloud / Drive
+### Phase 3 — Cloud sync
+- ☁️ **OneDrive (Microsoft 365 E3 / personal)** — Microsoft Graph API
+  via OAuth 2.0 + PKCE (`flutter_appauth`). No client secret required.
+  Automatic refresh-token rotation. Per-file `If-Match` etag check.
+- 🍎 **iCloud Drive** — file-based via the iOS / macOS ubiquity container.
+  Enable *iCloud Drive → Quill* in Settings and the OS handles sync.
+- 🔁 **Last-write-wins** reconciliation. Heal-pull repairs torn writes
+  automatically when both sides are clean.
+- 📊 **Sync badge** in the editor's app bar — `localOnly` / `dirty` /
+  `synced` / `syncing`.
+- 🛡 **Versioned payload** (`qnote.json` / `qpage.json`) — schema v1,
+  forward-compatible.
+
+## 🏗 Architecture
+
+```
+lib/
+├── app/                # MaterialApp + theming + router
+│   ├── theme/          # FlexColorScheme + typography (Inter + Newsreader)
+│   ├── router.dart     # go_router with StatefulShellRoute
+│   └── app.dart        # Root widget
+├── core/
+│   ├── providers/      # Riverpod providers (DB, settings, repos, cloud)
+│   └── utils/          # Responsive breakpoints, date formats
+├── data/
+│   └── database/       # Drift DB + DAOs (notes, folders, tags, drawing_pages)
+└── features/
+    ├── home/           # AppShell (NavigationRail / NavigationBar)
+    ├── dashboard/      # Main home screen
+    ├── folders/        # Folder detail page
+    ├── tags/           # Tag detail page
+    ├── search/         # Search results
+    ├── editor/         # Rich-text editor + drawing editor dispatch
+    ├── canvas/         # Handwriting canvas + brush picker + notebook editor
+    ├── cloud/          # CloudProvider (OneDrive, iCloud), SyncEngine
+    └── settings/       # Theme + cloud sync + about
+```
 
 ## 🏗 Architecture
 
@@ -125,6 +170,28 @@ called `quill-ios-unsigned` you can download straight from the Actions run.
    - `IOS_TEAM_ID` (optional)
 4. `git tag v0.1.0 && git push --tags` — the workflow uploads the build to
    TestFlight automatically.
+
+### Set up OneDrive sync
+
+1. Go to [portal.azure.com](https://portal.azure.com) → *Microsoft Entra ID*
+   → *App registrations* → *New registration*.
+2. Pick **Public client (mobile + desktop)** and add the redirect URI
+   `msauth.<your-client-id>://auth` under *Authentication*.
+4. Add the Quill app's redirect URI: `msauth.<client-id>://auth`.
+5. Open the iPad-side Quill → *Settings → Cloud sync → Connect*, paste the
+   client id and tap *Connect*. The Microsoft login webview appears once;
+   subsequent launches pick up the cached refresh token.
+
+### Set up iCloud Drive sync
+
+1. Open the Apple Developer portal and add the **iCloud** capability to
+   the App ID, plus the **iCloud Documents** service.
+2. Add `com.apple.developer.icloud-container-identifiers` and
+   `com.apple.developer.icloud-services = CloudDocuments` to the app's
+   entitlements.
+3. On the iPad go to *Settings → Apple ID → iCloud → iCloud Drive* and
+   enable *Quill*. The OS will sync the app's ubiquity container
+   automatically — no further setup inside Quill is needed.
 
 ## 🤝 Contributing
 
