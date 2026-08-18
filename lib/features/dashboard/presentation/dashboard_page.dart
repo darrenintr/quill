@@ -43,12 +43,10 @@ class DashboardPage extends ConsumerWidget {
             onPressed: () => context.go(AppRoutes.search),
           ),
           PopupMenuButton<String>(
-            tooltip: 'New',
-            icon: const Icon(Icons.add_circle_outline_rounded),
+            tooltip: 'More',
+            icon: const Icon(Icons.more_vert_rounded),
             onSelected: (value) async {
               switch (value) {
-                case 'drawing':
-                  await _createDrawingNote(context, ref);
                 case 'folder':
                   await _createFolder(context, ref);
                 case 'tag':
@@ -56,14 +54,6 @@ class DashboardPage extends ConsumerWidget {
               }
             },
             itemBuilder: (_) => const [
-              PopupMenuItem(
-                value: 'drawing',
-                child: ListTile(
-                  leading: Icon(Icons.brush_outlined),
-                  title: Text('New drawing'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
               PopupMenuItem(
                 value: 'folder',
                 child: ListTile(
@@ -86,9 +76,9 @@ class DashboardPage extends ConsumerWidget {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _createNote(context, ref),
+        onPressed: () => _showCreateSheet(context, ref),
         icon: const Icon(Icons.add_rounded),
-        label: const Text('New note'),
+        label: const Text('New'),
       ),
       body: SafeArea(
         child: notesAsync.when(
@@ -131,6 +121,53 @@ class DashboardPage extends ConsumerWidget {
       updatedAt: now,
     ));
     if (context.mounted) context.push(AppRoutes.editorById(id));
+  }
+
+  /// Shows a bottom sheet of creation options. The drawing option is
+  /// intentionally first / most prominent — it's the headline feature and
+  /// would otherwise be hidden in a popup menu nobody looks at.
+  Future<void> _showCreateSheet(BuildContext context, WidgetRef ref) async {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Create new', style: textTheme.titleMedium),
+                const SizedBox(height: 8),
+                _CreateOption(
+                  icon: Icons.brush_rounded,
+                  iconColor: colorScheme.primary,
+                  title: 'Drawing',
+                  subtitle: 'Sketch with Apple Pencil, multi-page',
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _createDrawingNote(context, ref);
+                  },
+                ),
+                _CreateOption(
+                  icon: Icons.notes_rounded,
+                  iconColor: colorScheme.secondary,
+                  title: 'Text note',
+                  subtitle: 'Rich text with formatting',
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _createNote(context, ref);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _createDrawingNote(BuildContext context, WidgetRef ref) async {
@@ -216,6 +253,71 @@ class DashboardPage extends ConsumerWidget {
     if (name != null && name.isNotEmpty) {
       await ref.read(tagsDaoProvider).ensure(name);
     }
+  }
+}
+
+/// Row inside the "Create new" bottom sheet.
+class _CreateOption extends StatelessWidget {
+  const _CreateOption({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Material(
+      color: colorScheme.surface,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: iconColor, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: colorScheme.outline),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
