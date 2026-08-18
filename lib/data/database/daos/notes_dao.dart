@@ -120,14 +120,32 @@ class NotesDao extends DatabaseAccessor<AppDatabase> with _$NotesDaoMixin {
 
   /// Notes that need to be pushed to the cloud. The [provider] argument
   /// constrains the query to a specific provider ('onedrive' / 'icloud').
+  /// Notes that have never been synced (cloudProvider IS NULL) match
+  /// regardless of [provider] — they're the obvious push candidates.
   Stream<List<NoteRow>> watchDirty({String? provider}) {
     final query = select(notes)
       ..where((t) => t.isDirty.equals(true) & t.trashed.equals(false));
     if (provider != null) {
-      query.where((t) => t.cloudProvider.equals(provider));
+      query.where(
+        (t) => t.cloudProvider.equals(provider) | t.cloudProvider.isNull(),
+      );
     }
     query.orderBy([(t) => OrderingTerm.asc(t.updatedAt)]);
     return query.watch();
+  }
+
+  /// One-shot read of dirty notes — used by the sync engine to avoid the
+  /// racing subscription of `watchDirty().first`.
+  Future<List<NoteRow>> findDirty({String? provider}) {
+    final query = select(notes)
+      ..where((t) => t.isDirty.equals(true) & t.trashed.equals(false));
+    if (provider != null) {
+      query.where(
+        (t) => t.cloudProvider.equals(provider) | t.cloudProvider.isNull(),
+      );
+    }
+    query.orderBy([(t) => OrderingTerm.asc(t.updatedAt)]);
+    return query.get();
   }
 
   /// Called by the sync engine after a successful upload.

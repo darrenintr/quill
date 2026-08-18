@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_settings_controller.dart';
+import '../../cloud/presentation/cloud_sync_section.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -77,6 +78,8 @@ class SettingsPage extends ConsumerWidget {
             value: settings.useDynamicColor,
             onChanged: controller.setUseDynamicColor,
           ),
+          const Divider(height: 32),
+          const CloudSyncSection(),
           const Divider(height: 32),
           _SectionHeader(label: 'About'),
           ListTile(
