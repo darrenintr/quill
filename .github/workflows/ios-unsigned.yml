@@ -16,11 +16,12 @@ permissions:
 jobs:
   build-ios-unsigned:
     name: Build unsigned IPA
-    runs-on: macos-14   # Apple Silicon runner with Xcode 15+
+    runs-on: macos-14
 
     env:
       PUB_CACHE: ${{ github.workspace }}/.pub-cache
       FLUTTER_ROOT: ${{ github.workspace }}/flutter
+      EXPORT_OPTIONS_PATH: ${{ github.workspace }}/ios/ExportOptions.plist
 
     steps:
       - name: Checkout
@@ -52,52 +53,59 @@ jobs:
       - name: Generate Drift code
         run: dart run build_runner build --delete-conflicting-outputs
 
-      # --no-codesign on `flutter build ios` produces a release .app bundle
-      # without requiring a Development Team. We then zip the bundle into
-      # a sideloadable .ipa manually because `flutter build ipa` always
-      # insists on a team id.
-      #
-      # We also export the four xcconfig overrides below — Xcode's "Automatic"
-      # signing style still wants a team even with --no-codesign, so we
-      # force it off completely for this build.
-      - name: Build unsigned .app
+      # `flutter build ios --no-codesign` still refuses to build when the
+      # Xcode project's CODE_SIGN_STYLE is Automatic, even with all the
+      # right env vars. The workaround: run `flutter build ios --config-only`
+      # (which only generates the .xcconfig), then call xcodebuild ourselves
+      # with CODE_SIGNING_ALLOWED=NO. The resulting .app is what we package
+      # into the .ipa.
+      - name: Configure iOS project
         working-directory: ios
-        env:
-          CODE_SIGNING_ALLOWED: 'NO'
-          CODE_SIGNING_REQUIRED: 'NO'
-          CODE_SIGN_IDENTITY: ''
-          CODE_SIGN_STYLE: Manual
-          DEVELOPMENT_TEAM: ''
+        run: flutter build ios --config-only
+
+      - name: Build .app with code signing disabled
+        working-directory: ios
         run: |
-          flutter build ios --release --no-codesign
+          set -e
+          xcodebuild \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM="" \
+            build
 
       - name: Locate .app bundle
         id: locate
         working-directory: ios
         run: |
           set -e
-          APP="$(find build/ios -maxdepth 5 -name 'Runner.app' -type d -print -quit)"
+          APP="$(find build/DerivedData -maxdepth 6 -name 'Runner.app' -type d -print -quit)"
+          if [ -z "$APP" ]; then
+            echo "Could not locate Runner.app under build/DerivedData" >&2
+            exit 1
+          fi
           echo "app=$APP" >> "$GITHUB_OUTPUT"
           echo "Found app: $APP"
 
       - name: Package .app into unsigned .ipa
-        working-directory: ios
         run: |
           set -e
           APP="${{ steps.locate.outputs.app }}"
           OUT="$GITHUB_WORKSPACE/quill-unsigned.ipa"
 
-          # `xcrun` knows how to assemble the iOS App Store package layout
-          # (Payload/Runner.app) into a single zip — same format the App
-          # Store accepts, so AltStore / Sideloadly will install it fine.
           TMP="$(mktemp -d)"
           mkdir -p "$TMP/Payload"
           cp -R "$APP" "$TMP/Payload/Runner.app"
 
-          # /Applications is a symlink on the runner; rsync preserves the
-          # executable bit which cp sometimes loses for Mach-O files.
-          rsync -a --delete "$TMP/Payload/" "$OUT.partial/" 2>/dev/null || \
-            cp -R "$TMP/Payload" "$OUT.partial/"
+          # iOS expects the standard App Store layout: Payload/<App>.app
+          # zipped up. AltStore / Sideloadly accept exactly this format.
           (cd "$TMP" && zip -qr "$OUT" Payload)
 
           ls -lh "$OUT"
