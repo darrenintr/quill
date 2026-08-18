@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/database/app_database.dart';
+import '../../data/database/daos/drawing_pages_dao.dart';
 import '../../data/database/daos/folders_dao.dart';
 import '../../data/database/daos/notes_dao.dart';
 import '../../data/database/daos/tags_dao.dart';
@@ -23,4 +24,8 @@ final foldersDaoProvider = Provider<FoldersDao>(
 
 final tagsDaoProvider = Provider<TagsDao>(
   (ref) => ref.watch(databaseProvider).tagsDao,
+);
+
+final drawingPagesDaoProvider = Provider<DrawingPagesDao>(
+  (ref) => ref.watch(databaseProvider).drawingPagesDao,
 );

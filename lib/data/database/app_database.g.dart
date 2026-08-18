@@ -493,6 +493,16 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, NoteRow> {
       'REFERENCES folders (id) ON DELETE SET NULL',
     ),
   );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('text'),
+  );
   static const VerificationMeta _titleMeta = const VerificationMeta('title');
   @override
   late final GeneratedColumn<String> title = GeneratedColumn<String>(
@@ -611,10 +621,60 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, NoteRow> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _cloudEtagMeta = const VerificationMeta(
+    'cloudEtag',
+  );
+  @override
+  late final GeneratedColumn<String> cloudEtag = GeneratedColumn<String>(
+    'cloud_etag',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _cloudProviderMeta = const VerificationMeta(
+    'cloudProvider',
+  );
+  @override
+  late final GeneratedColumn<String> cloudProvider = GeneratedColumn<String>(
+    'cloud_provider',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _cloudSyncedAtMeta = const VerificationMeta(
+    'cloudSyncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cloudSyncedAt =
+      GeneratedColumn<DateTime>(
+        'cloud_synced_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _isDirtyMeta = const VerificationMeta(
+    'isDirty',
+  );
+  @override
+  late final GeneratedColumn<bool> isDirty = GeneratedColumn<bool>(
+    'is_dirty',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_dirty" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
     folderId,
+    kind,
     title,
     contentJson,
     preview,
@@ -625,6 +685,10 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, NoteRow> {
     trashed,
     createdAt,
     updatedAt,
+    cloudEtag,
+    cloudProvider,
+    cloudSyncedAt,
+    isDirty,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -647,6 +711,12 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, NoteRow> {
       context.handle(
         _folderIdMeta,
         folderId.isAcceptableOrUnknown(data['folder_id']!, _folderIdMeta),
+      );
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
       );
     }
     if (data.containsKey('title')) {
@@ -716,6 +786,36 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, NoteRow> {
     } else if (isInserting) {
       context.missing(_updatedAtMeta);
     }
+    if (data.containsKey('cloud_etag')) {
+      context.handle(
+        _cloudEtagMeta,
+        cloudEtag.isAcceptableOrUnknown(data['cloud_etag']!, _cloudEtagMeta),
+      );
+    }
+    if (data.containsKey('cloud_provider')) {
+      context.handle(
+        _cloudProviderMeta,
+        cloudProvider.isAcceptableOrUnknown(
+          data['cloud_provider']!,
+          _cloudProviderMeta,
+        ),
+      );
+    }
+    if (data.containsKey('cloud_synced_at')) {
+      context.handle(
+        _cloudSyncedAtMeta,
+        cloudSyncedAt.isAcceptableOrUnknown(
+          data['cloud_synced_at']!,
+          _cloudSyncedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_dirty')) {
+      context.handle(
+        _isDirtyMeta,
+        isDirty.isAcceptableOrUnknown(data['is_dirty']!, _isDirtyMeta),
+      );
+    }
     return context;
   }
 
@@ -733,6 +833,10 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, NoteRow> {
         DriftSqlType.string,
         data['${effectivePrefix}folder_id'],
       ),
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
       title: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}title'],
@@ -773,6 +877,22 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, NoteRow> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       )!,
+      cloudEtag: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cloud_etag'],
+      ),
+      cloudProvider: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cloud_provider'],
+      ),
+      cloudSyncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cloud_synced_at'],
+      ),
+      isDirty: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_dirty'],
+      )!,
     );
   }
 
@@ -785,6 +905,7 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, NoteRow> {
 class NoteRow extends DataClass implements Insertable<NoteRow> {
   final String id;
   final String? folderId;
+  final String kind;
   final String title;
   final String contentJson;
   final String preview;
@@ -795,9 +916,14 @@ class NoteRow extends DataClass implements Insertable<NoteRow> {
   final bool trashed;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? cloudEtag;
+  final String? cloudProvider;
+  final DateTime? cloudSyncedAt;
+  final bool isDirty;
   const NoteRow({
     required this.id,
     this.folderId,
+    required this.kind,
     required this.title,
     required this.contentJson,
     required this.preview,
@@ -808,6 +934,10 @@ class NoteRow extends DataClass implements Insertable<NoteRow> {
     required this.trashed,
     required this.createdAt,
     required this.updatedAt,
+    this.cloudEtag,
+    this.cloudProvider,
+    this.cloudSyncedAt,
+    required this.isDirty,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -816,6 +946,7 @@ class NoteRow extends DataClass implements Insertable<NoteRow> {
     if (!nullToAbsent || folderId != null) {
       map['folder_id'] = Variable<String>(folderId);
     }
+    map['kind'] = Variable<String>(kind);
     map['title'] = Variable<String>(title);
     map['content_json'] = Variable<String>(contentJson);
     map['preview'] = Variable<String>(preview);
@@ -828,6 +959,16 @@ class NoteRow extends DataClass implements Insertable<NoteRow> {
     map['trashed'] = Variable<bool>(trashed);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || cloudEtag != null) {
+      map['cloud_etag'] = Variable<String>(cloudEtag);
+    }
+    if (!nullToAbsent || cloudProvider != null) {
+      map['cloud_provider'] = Variable<String>(cloudProvider);
+    }
+    if (!nullToAbsent || cloudSyncedAt != null) {
+      map['cloud_synced_at'] = Variable<DateTime>(cloudSyncedAt);
+    }
+    map['is_dirty'] = Variable<bool>(isDirty);
     return map;
   }
 
@@ -837,6 +978,7 @@ class NoteRow extends DataClass implements Insertable<NoteRow> {
       folderId: folderId == null && nullToAbsent
           ? const Value.absent()
           : Value(folderId),
+      kind: Value(kind),
       title: Value(title),
       contentJson: Value(contentJson),
       preview: Value(preview),
@@ -849,6 +991,16 @@ class NoteRow extends DataClass implements Insertable<NoteRow> {
       trashed: Value(trashed),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
+      cloudEtag: cloudEtag == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cloudEtag),
+      cloudProvider: cloudProvider == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cloudProvider),
+      cloudSyncedAt: cloudSyncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cloudSyncedAt),
+      isDirty: Value(isDirty),
     );
   }
 
@@ -860,6 +1012,7 @@ class NoteRow extends DataClass implements Insertable<NoteRow> {
     return NoteRow(
       id: serializer.fromJson<String>(json['id']),
       folderId: serializer.fromJson<String?>(json['folderId']),
+      kind: serializer.fromJson<String>(json['kind']),
       title: serializer.fromJson<String>(json['title']),
       contentJson: serializer.fromJson<String>(json['contentJson']),
       preview: serializer.fromJson<String>(json['preview']),
@@ -870,6 +1023,10 @@ class NoteRow extends DataClass implements Insertable<NoteRow> {
       trashed: serializer.fromJson<bool>(json['trashed']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      cloudEtag: serializer.fromJson<String?>(json['cloudEtag']),
+      cloudProvider: serializer.fromJson<String?>(json['cloudProvider']),
+      cloudSyncedAt: serializer.fromJson<DateTime?>(json['cloudSyncedAt']),
+      isDirty: serializer.fromJson<bool>(json['isDirty']),
     );
   }
   @override
@@ -878,6 +1035,7 @@ class NoteRow extends DataClass implements Insertable<NoteRow> {
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'folderId': serializer.toJson<String?>(folderId),
+      'kind': serializer.toJson<String>(kind),
       'title': serializer.toJson<String>(title),
       'contentJson': serializer.toJson<String>(contentJson),
       'preview': serializer.toJson<String>(preview),
@@ -888,12 +1046,17 @@ class NoteRow extends DataClass implements Insertable<NoteRow> {
       'trashed': serializer.toJson<bool>(trashed),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'cloudEtag': serializer.toJson<String?>(cloudEtag),
+      'cloudProvider': serializer.toJson<String?>(cloudProvider),
+      'cloudSyncedAt': serializer.toJson<DateTime?>(cloudSyncedAt),
+      'isDirty': serializer.toJson<bool>(isDirty),
     };
   }
 
   NoteRow copyWith({
     String? id,
     Value<String?> folderId = const Value.absent(),
+    String? kind,
     String? title,
     String? contentJson,
     String? preview,
@@ -904,9 +1067,14 @@ class NoteRow extends DataClass implements Insertable<NoteRow> {
     bool? trashed,
     DateTime? createdAt,
     DateTime? updatedAt,
+    Value<String?> cloudEtag = const Value.absent(),
+    Value<String?> cloudProvider = const Value.absent(),
+    Value<DateTime?> cloudSyncedAt = const Value.absent(),
+    bool? isDirty,
   }) => NoteRow(
     id: id ?? this.id,
     folderId: folderId.present ? folderId.value : this.folderId,
+    kind: kind ?? this.kind,
     title: title ?? this.title,
     contentJson: contentJson ?? this.contentJson,
     preview: preview ?? this.preview,
@@ -917,11 +1085,20 @@ class NoteRow extends DataClass implements Insertable<NoteRow> {
     trashed: trashed ?? this.trashed,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
+    cloudEtag: cloudEtag.present ? cloudEtag.value : this.cloudEtag,
+    cloudProvider: cloudProvider.present
+        ? cloudProvider.value
+        : this.cloudProvider,
+    cloudSyncedAt: cloudSyncedAt.present
+        ? cloudSyncedAt.value
+        : this.cloudSyncedAt,
+    isDirty: isDirty ?? this.isDirty,
   );
   NoteRow copyWithCompanion(NotesCompanion data) {
     return NoteRow(
       id: data.id.present ? data.id.value : this.id,
       folderId: data.folderId.present ? data.folderId.value : this.folderId,
+      kind: data.kind.present ? data.kind.value : this.kind,
       title: data.title.present ? data.title.value : this.title,
       contentJson: data.contentJson.present
           ? data.contentJson.value
@@ -934,6 +1111,14 @@ class NoteRow extends DataClass implements Insertable<NoteRow> {
       trashed: data.trashed.present ? data.trashed.value : this.trashed,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      cloudEtag: data.cloudEtag.present ? data.cloudEtag.value : this.cloudEtag,
+      cloudProvider: data.cloudProvider.present
+          ? data.cloudProvider.value
+          : this.cloudProvider,
+      cloudSyncedAt: data.cloudSyncedAt.present
+          ? data.cloudSyncedAt.value
+          : this.cloudSyncedAt,
+      isDirty: data.isDirty.present ? data.isDirty.value : this.isDirty,
     );
   }
 
@@ -942,6 +1127,7 @@ class NoteRow extends DataClass implements Insertable<NoteRow> {
     return (StringBuffer('NoteRow(')
           ..write('id: $id, ')
           ..write('folderId: $folderId, ')
+          ..write('kind: $kind, ')
           ..write('title: $title, ')
           ..write('contentJson: $contentJson, ')
           ..write('preview: $preview, ')
@@ -951,7 +1137,11 @@ class NoteRow extends DataClass implements Insertable<NoteRow> {
           ..write('archived: $archived, ')
           ..write('trashed: $trashed, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('cloudEtag: $cloudEtag, ')
+          ..write('cloudProvider: $cloudProvider, ')
+          ..write('cloudSyncedAt: $cloudSyncedAt, ')
+          ..write('isDirty: $isDirty')
           ..write(')'))
         .toString();
   }
@@ -960,6 +1150,7 @@ class NoteRow extends DataClass implements Insertable<NoteRow> {
   int get hashCode => Object.hash(
     id,
     folderId,
+    kind,
     title,
     contentJson,
     preview,
@@ -970,6 +1161,10 @@ class NoteRow extends DataClass implements Insertable<NoteRow> {
     trashed,
     createdAt,
     updatedAt,
+    cloudEtag,
+    cloudProvider,
+    cloudSyncedAt,
+    isDirty,
   );
   @override
   bool operator ==(Object other) =>
@@ -977,6 +1172,7 @@ class NoteRow extends DataClass implements Insertable<NoteRow> {
       (other is NoteRow &&
           other.id == this.id &&
           other.folderId == this.folderId &&
+          other.kind == this.kind &&
           other.title == this.title &&
           other.contentJson == this.contentJson &&
           other.preview == this.preview &&
@@ -986,12 +1182,17 @@ class NoteRow extends DataClass implements Insertable<NoteRow> {
           other.archived == this.archived &&
           other.trashed == this.trashed &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.cloudEtag == this.cloudEtag &&
+          other.cloudProvider == this.cloudProvider &&
+          other.cloudSyncedAt == this.cloudSyncedAt &&
+          other.isDirty == this.isDirty);
 }
 
 class NotesCompanion extends UpdateCompanion<NoteRow> {
   final Value<String> id;
   final Value<String?> folderId;
+  final Value<String> kind;
   final Value<String> title;
   final Value<String> contentJson;
   final Value<String> preview;
@@ -1002,10 +1203,15 @@ class NotesCompanion extends UpdateCompanion<NoteRow> {
   final Value<bool> trashed;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<String?> cloudEtag;
+  final Value<String?> cloudProvider;
+  final Value<DateTime?> cloudSyncedAt;
+  final Value<bool> isDirty;
   final Value<int> rowid;
   const NotesCompanion({
     this.id = const Value.absent(),
     this.folderId = const Value.absent(),
+    this.kind = const Value.absent(),
     this.title = const Value.absent(),
     this.contentJson = const Value.absent(),
     this.preview = const Value.absent(),
@@ -1016,11 +1222,16 @@ class NotesCompanion extends UpdateCompanion<NoteRow> {
     this.trashed = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.cloudEtag = const Value.absent(),
+    this.cloudProvider = const Value.absent(),
+    this.cloudSyncedAt = const Value.absent(),
+    this.isDirty = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   NotesCompanion.insert({
     required String id,
     this.folderId = const Value.absent(),
+    this.kind = const Value.absent(),
     this.title = const Value.absent(),
     this.contentJson = const Value.absent(),
     this.preview = const Value.absent(),
@@ -1031,6 +1242,10 @@ class NotesCompanion extends UpdateCompanion<NoteRow> {
     this.trashed = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
+    this.cloudEtag = const Value.absent(),
+    this.cloudProvider = const Value.absent(),
+    this.cloudSyncedAt = const Value.absent(),
+    this.isDirty = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        createdAt = Value(createdAt),
@@ -1038,6 +1253,7 @@ class NotesCompanion extends UpdateCompanion<NoteRow> {
   static Insertable<NoteRow> custom({
     Expression<String>? id,
     Expression<String>? folderId,
+    Expression<String>? kind,
     Expression<String>? title,
     Expression<String>? contentJson,
     Expression<String>? preview,
@@ -1048,11 +1264,16 @@ class NotesCompanion extends UpdateCompanion<NoteRow> {
     Expression<bool>? trashed,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<String>? cloudEtag,
+    Expression<String>? cloudProvider,
+    Expression<DateTime>? cloudSyncedAt,
+    Expression<bool>? isDirty,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (folderId != null) 'folder_id': folderId,
+      if (kind != null) 'kind': kind,
       if (title != null) 'title': title,
       if (contentJson != null) 'content_json': contentJson,
       if (preview != null) 'preview': preview,
@@ -1063,6 +1284,10 @@ class NotesCompanion extends UpdateCompanion<NoteRow> {
       if (trashed != null) 'trashed': trashed,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (cloudEtag != null) 'cloud_etag': cloudEtag,
+      if (cloudProvider != null) 'cloud_provider': cloudProvider,
+      if (cloudSyncedAt != null) 'cloud_synced_at': cloudSyncedAt,
+      if (isDirty != null) 'is_dirty': isDirty,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1070,6 +1295,7 @@ class NotesCompanion extends UpdateCompanion<NoteRow> {
   NotesCompanion copyWith({
     Value<String>? id,
     Value<String?>? folderId,
+    Value<String>? kind,
     Value<String>? title,
     Value<String>? contentJson,
     Value<String>? preview,
@@ -1080,11 +1306,16 @@ class NotesCompanion extends UpdateCompanion<NoteRow> {
     Value<bool>? trashed,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
+    Value<String?>? cloudEtag,
+    Value<String?>? cloudProvider,
+    Value<DateTime?>? cloudSyncedAt,
+    Value<bool>? isDirty,
     Value<int>? rowid,
   }) {
     return NotesCompanion(
       id: id ?? this.id,
       folderId: folderId ?? this.folderId,
+      kind: kind ?? this.kind,
       title: title ?? this.title,
       contentJson: contentJson ?? this.contentJson,
       preview: preview ?? this.preview,
@@ -1095,6 +1326,10 @@ class NotesCompanion extends UpdateCompanion<NoteRow> {
       trashed: trashed ?? this.trashed,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      cloudEtag: cloudEtag ?? this.cloudEtag,
+      cloudProvider: cloudProvider ?? this.cloudProvider,
+      cloudSyncedAt: cloudSyncedAt ?? this.cloudSyncedAt,
+      isDirty: isDirty ?? this.isDirty,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1107,6 +1342,9 @@ class NotesCompanion extends UpdateCompanion<NoteRow> {
     }
     if (folderId.present) {
       map['folder_id'] = Variable<String>(folderId.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
     }
     if (title.present) {
       map['title'] = Variable<String>(title.value);
@@ -1138,6 +1376,18 @@ class NotesCompanion extends UpdateCompanion<NoteRow> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (cloudEtag.present) {
+      map['cloud_etag'] = Variable<String>(cloudEtag.value);
+    }
+    if (cloudProvider.present) {
+      map['cloud_provider'] = Variable<String>(cloudProvider.value);
+    }
+    if (cloudSyncedAt.present) {
+      map['cloud_synced_at'] = Variable<DateTime>(cloudSyncedAt.value);
+    }
+    if (isDirty.present) {
+      map['is_dirty'] = Variable<bool>(isDirty.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1149,6 +1399,7 @@ class NotesCompanion extends UpdateCompanion<NoteRow> {
     return (StringBuffer('NotesCompanion(')
           ..write('id: $id, ')
           ..write('folderId: $folderId, ')
+          ..write('kind: $kind, ')
           ..write('title: $title, ')
           ..write('contentJson: $contentJson, ')
           ..write('preview: $preview, ')
@@ -1159,6 +1410,10 @@ class NotesCompanion extends UpdateCompanion<NoteRow> {
           ..write('trashed: $trashed, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('cloudEtag: $cloudEtag, ')
+          ..write('cloudProvider: $cloudProvider, ')
+          ..write('cloudSyncedAt: $cloudSyncedAt, ')
+          ..write('isDirty: $isDirty, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1683,6 +1938,458 @@ class NoteTagsCompanion extends UpdateCompanion<NoteTagRow> {
   }
 }
 
+class $DrawingPagesTable extends DrawingPages
+    with TableInfo<$DrawingPagesTable, DrawingPageRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DrawingPagesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _noteIdMeta = const VerificationMeta('noteId');
+  @override
+  late final GeneratedColumn<String> noteId = GeneratedColumn<String>(
+    'note_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES notes (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _pageIndexMeta = const VerificationMeta(
+    'pageIndex',
+  );
+  @override
+  late final GeneratedColumn<int> pageIndex = GeneratedColumn<int>(
+    'page_index',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _strokesMeta = const VerificationMeta(
+    'strokes',
+  );
+  @override
+  late final GeneratedColumn<String> strokes = GeneratedColumn<String>(
+    'strokes',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
+  static const VerificationMeta _colorMeta = const VerificationMeta('color');
+  @override
+  late final GeneratedColumn<int> color = GeneratedColumn<int>(
+    'color',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0xFFFFFFFF),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    noteId,
+    pageIndex,
+    strokes,
+    color,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'drawing_pages';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DrawingPageRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('note_id')) {
+      context.handle(
+        _noteIdMeta,
+        noteId.isAcceptableOrUnknown(data['note_id']!, _noteIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_noteIdMeta);
+    }
+    if (data.containsKey('page_index')) {
+      context.handle(
+        _pageIndexMeta,
+        pageIndex.isAcceptableOrUnknown(data['page_index']!, _pageIndexMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pageIndexMeta);
+    }
+    if (data.containsKey('strokes')) {
+      context.handle(
+        _strokesMeta,
+        strokes.isAcceptableOrUnknown(data['strokes']!, _strokesMeta),
+      );
+    }
+    if (data.containsKey('color')) {
+      context.handle(
+        _colorMeta,
+        color.isAcceptableOrUnknown(data['color']!, _colorMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DrawingPageRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DrawingPageRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      noteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note_id'],
+      )!,
+      pageIndex: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}page_index'],
+      )!,
+      strokes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}strokes'],
+      )!,
+      color: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}color'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DrawingPagesTable createAlias(String alias) {
+    return $DrawingPagesTable(attachedDatabase, alias);
+  }
+}
+
+class DrawingPageRow extends DataClass implements Insertable<DrawingPageRow> {
+  final String id;
+  final String noteId;
+  final int pageIndex;
+  final String strokes;
+  final int color;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const DrawingPageRow({
+    required this.id,
+    required this.noteId,
+    required this.pageIndex,
+    required this.strokes,
+    required this.color,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['note_id'] = Variable<String>(noteId);
+    map['page_index'] = Variable<int>(pageIndex);
+    map['strokes'] = Variable<String>(strokes);
+    map['color'] = Variable<int>(color);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  DrawingPagesCompanion toCompanion(bool nullToAbsent) {
+    return DrawingPagesCompanion(
+      id: Value(id),
+      noteId: Value(noteId),
+      pageIndex: Value(pageIndex),
+      strokes: Value(strokes),
+      color: Value(color),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory DrawingPageRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DrawingPageRow(
+      id: serializer.fromJson<String>(json['id']),
+      noteId: serializer.fromJson<String>(json['noteId']),
+      pageIndex: serializer.fromJson<int>(json['pageIndex']),
+      strokes: serializer.fromJson<String>(json['strokes']),
+      color: serializer.fromJson<int>(json['color']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'noteId': serializer.toJson<String>(noteId),
+      'pageIndex': serializer.toJson<int>(pageIndex),
+      'strokes': serializer.toJson<String>(strokes),
+      'color': serializer.toJson<int>(color),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  DrawingPageRow copyWith({
+    String? id,
+    String? noteId,
+    int? pageIndex,
+    String? strokes,
+    int? color,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => DrawingPageRow(
+    id: id ?? this.id,
+    noteId: noteId ?? this.noteId,
+    pageIndex: pageIndex ?? this.pageIndex,
+    strokes: strokes ?? this.strokes,
+    color: color ?? this.color,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  DrawingPageRow copyWithCompanion(DrawingPagesCompanion data) {
+    return DrawingPageRow(
+      id: data.id.present ? data.id.value : this.id,
+      noteId: data.noteId.present ? data.noteId.value : this.noteId,
+      pageIndex: data.pageIndex.present ? data.pageIndex.value : this.pageIndex,
+      strokes: data.strokes.present ? data.strokes.value : this.strokes,
+      color: data.color.present ? data.color.value : this.color,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DrawingPageRow(')
+          ..write('id: $id, ')
+          ..write('noteId: $noteId, ')
+          ..write('pageIndex: $pageIndex, ')
+          ..write('strokes: $strokes, ')
+          ..write('color: $color, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, noteId, pageIndex, strokes, color, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DrawingPageRow &&
+          other.id == this.id &&
+          other.noteId == this.noteId &&
+          other.pageIndex == this.pageIndex &&
+          other.strokes == this.strokes &&
+          other.color == this.color &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class DrawingPagesCompanion extends UpdateCompanion<DrawingPageRow> {
+  final Value<String> id;
+  final Value<String> noteId;
+  final Value<int> pageIndex;
+  final Value<String> strokes;
+  final Value<int> color;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const DrawingPagesCompanion({
+    this.id = const Value.absent(),
+    this.noteId = const Value.absent(),
+    this.pageIndex = const Value.absent(),
+    this.strokes = const Value.absent(),
+    this.color = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DrawingPagesCompanion.insert({
+    required String id,
+    required String noteId,
+    required int pageIndex,
+    this.strokes = const Value.absent(),
+    this.color = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       noteId = Value(noteId),
+       pageIndex = Value(pageIndex),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<DrawingPageRow> custom({
+    Expression<String>? id,
+    Expression<String>? noteId,
+    Expression<int>? pageIndex,
+    Expression<String>? strokes,
+    Expression<int>? color,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (noteId != null) 'note_id': noteId,
+      if (pageIndex != null) 'page_index': pageIndex,
+      if (strokes != null) 'strokes': strokes,
+      if (color != null) 'color': color,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DrawingPagesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? noteId,
+    Value<int>? pageIndex,
+    Value<String>? strokes,
+    Value<int>? color,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return DrawingPagesCompanion(
+      id: id ?? this.id,
+      noteId: noteId ?? this.noteId,
+      pageIndex: pageIndex ?? this.pageIndex,
+      strokes: strokes ?? this.strokes,
+      color: color ?? this.color,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (noteId.present) {
+      map['note_id'] = Variable<String>(noteId.value);
+    }
+    if (pageIndex.present) {
+      map['page_index'] = Variable<int>(pageIndex.value);
+    }
+    if (strokes.present) {
+      map['strokes'] = Variable<String>(strokes.value);
+    }
+    if (color.present) {
+      map['color'] = Variable<int>(color.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DrawingPagesCompanion(')
+          ..write('id: $id, ')
+          ..write('noteId: $noteId, ')
+          ..write('pageIndex: $pageIndex, ')
+          ..write('strokes: $strokes, ')
+          ..write('color: $color, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1690,9 +2397,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $NotesTable notes = $NotesTable(this);
   late final $TagsTable tags = $TagsTable(this);
   late final $NoteTagsTable noteTags = $NoteTagsTable(this);
+  late final $DrawingPagesTable drawingPages = $DrawingPagesTable(this);
   late final NotesDao notesDao = NotesDao(this as AppDatabase);
   late final FoldersDao foldersDao = FoldersDao(this as AppDatabase);
   late final TagsDao tagsDao = TagsDao(this as AppDatabase);
+  late final DrawingPagesDao drawingPagesDao = DrawingPagesDao(
+    this as AppDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1702,6 +2413,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     notes,
     tags,
     noteTags,
+    drawingPages,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -1732,6 +2444,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('note_tags', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'notes',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('drawing_pages', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -2183,6 +2902,7 @@ typedef $$NotesTableCreateCompanionBuilder =
     NotesCompanion Function({
       required String id,
       Value<String?> folderId,
+      Value<String> kind,
       Value<String> title,
       Value<String> contentJson,
       Value<String> preview,
@@ -2193,12 +2913,17 @@ typedef $$NotesTableCreateCompanionBuilder =
       Value<bool> trashed,
       required DateTime createdAt,
       required DateTime updatedAt,
+      Value<String?> cloudEtag,
+      Value<String?> cloudProvider,
+      Value<DateTime?> cloudSyncedAt,
+      Value<bool> isDirty,
       Value<int> rowid,
     });
 typedef $$NotesTableUpdateCompanionBuilder =
     NotesCompanion Function({
       Value<String> id,
       Value<String?> folderId,
+      Value<String> kind,
       Value<String> title,
       Value<String> contentJson,
       Value<String> preview,
@@ -2209,6 +2934,10 @@ typedef $$NotesTableUpdateCompanionBuilder =
       Value<bool> trashed,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<String?> cloudEtag,
+      Value<String?> cloudProvider,
+      Value<DateTime?> cloudSyncedAt,
+      Value<bool> isDirty,
       Value<int> rowid,
     });
 
@@ -2250,6 +2979,24 @@ final class $$NotesTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$DrawingPagesTable, List<DrawingPageRow>>
+  _drawingPagesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.drawingPages,
+    aliasName: $_aliasNameGenerator(db.notes.id, db.drawingPages.noteId),
+  );
+
+  $$DrawingPagesTableProcessedTableManager get drawingPagesRefs {
+    final manager = $$DrawingPagesTableTableManager(
+      $_db,
+      $_db.drawingPages,
+    ).filter((f) => f.noteId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_drawingPagesRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$NotesTableFilterComposer extends Composer<_$AppDatabase, $NotesTable> {
@@ -2262,6 +3009,11 @@ class $$NotesTableFilterComposer extends Composer<_$AppDatabase, $NotesTable> {
   });
   ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2315,6 +3067,26 @@ class $$NotesTableFilterComposer extends Composer<_$AppDatabase, $NotesTable> {
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get cloudEtag => $composableBuilder(
+    column: $table.cloudEtag,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cloudProvider => $composableBuilder(
+    column: $table.cloudProvider,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cloudSyncedAt => $composableBuilder(
+    column: $table.cloudSyncedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDirty => $composableBuilder(
+    column: $table.isDirty,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$FoldersTableFilterComposer get folderId {
     final $$FoldersTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -2362,6 +3134,31 @@ class $$NotesTableFilterComposer extends Composer<_$AppDatabase, $NotesTable> {
     );
     return f(composer);
   }
+
+  Expression<bool> drawingPagesRefs(
+    Expression<bool> Function($$DrawingPagesTableFilterComposer f) f,
+  ) {
+    final $$DrawingPagesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.drawingPages,
+      getReferencedColumn: (t) => t.noteId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DrawingPagesTableFilterComposer(
+            $db: $db,
+            $table: $db.drawingPages,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$NotesTableOrderingComposer
@@ -2375,6 +3172,11 @@ class $$NotesTableOrderingComposer
   });
   ColumnOrderings<String> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -2428,6 +3230,26 @@ class $$NotesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get cloudEtag => $composableBuilder(
+    column: $table.cloudEtag,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cloudProvider => $composableBuilder(
+    column: $table.cloudProvider,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cloudSyncedAt => $composableBuilder(
+    column: $table.cloudSyncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDirty => $composableBuilder(
+    column: $table.isDirty,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$FoldersTableOrderingComposer get folderId {
     final $$FoldersTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -2464,6 +3286,9 @@ class $$NotesTableAnnotationComposer
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
   GeneratedColumn<String> get title =>
       $composableBuilder(column: $table.title, builder: (column) => column);
 
@@ -2495,6 +3320,22 @@ class $$NotesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get cloudEtag =>
+      $composableBuilder(column: $table.cloudEtag, builder: (column) => column);
+
+  GeneratedColumn<String> get cloudProvider => $composableBuilder(
+    column: $table.cloudProvider,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get cloudSyncedAt => $composableBuilder(
+    column: $table.cloudSyncedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isDirty =>
+      $composableBuilder(column: $table.isDirty, builder: (column) => column);
 
   $$FoldersTableAnnotationComposer get folderId {
     final $$FoldersTableAnnotationComposer composer = $composerBuilder(
@@ -2543,6 +3384,31 @@ class $$NotesTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> drawingPagesRefs<T extends Object>(
+    Expression<T> Function($$DrawingPagesTableAnnotationComposer a) f,
+  ) {
+    final $$DrawingPagesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.drawingPages,
+      getReferencedColumn: (t) => t.noteId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DrawingPagesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.drawingPages,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$NotesTableTableManager
@@ -2558,7 +3424,11 @@ class $$NotesTableTableManager
           $$NotesTableUpdateCompanionBuilder,
           (NoteRow, $$NotesTableReferences),
           NoteRow,
-          PrefetchHooks Function({bool folderId, bool noteTagsRefs})
+          PrefetchHooks Function({
+            bool folderId,
+            bool noteTagsRefs,
+            bool drawingPagesRefs,
+          })
         > {
   $$NotesTableTableManager(_$AppDatabase db, $NotesTable table)
     : super(
@@ -2575,6 +3445,7 @@ class $$NotesTableTableManager
               ({
                 Value<String> id = const Value.absent(),
                 Value<String?> folderId = const Value.absent(),
+                Value<String> kind = const Value.absent(),
                 Value<String> title = const Value.absent(),
                 Value<String> contentJson = const Value.absent(),
                 Value<String> preview = const Value.absent(),
@@ -2585,10 +3456,15 @@ class $$NotesTableTableManager
                 Value<bool> trashed = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<String?> cloudEtag = const Value.absent(),
+                Value<String?> cloudProvider = const Value.absent(),
+                Value<DateTime?> cloudSyncedAt = const Value.absent(),
+                Value<bool> isDirty = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => NotesCompanion(
                 id: id,
                 folderId: folderId,
+                kind: kind,
                 title: title,
                 contentJson: contentJson,
                 preview: preview,
@@ -2599,12 +3475,17 @@ class $$NotesTableTableManager
                 trashed: trashed,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                cloudEtag: cloudEtag,
+                cloudProvider: cloudProvider,
+                cloudSyncedAt: cloudSyncedAt,
+                isDirty: isDirty,
                 rowid: rowid,
               ),
           createCompanionCallback:
               ({
                 required String id,
                 Value<String?> folderId = const Value.absent(),
+                Value<String> kind = const Value.absent(),
                 Value<String> title = const Value.absent(),
                 Value<String> contentJson = const Value.absent(),
                 Value<String> preview = const Value.absent(),
@@ -2615,10 +3496,15 @@ class $$NotesTableTableManager
                 Value<bool> trashed = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
+                Value<String?> cloudEtag = const Value.absent(),
+                Value<String?> cloudProvider = const Value.absent(),
+                Value<DateTime?> cloudSyncedAt = const Value.absent(),
+                Value<bool> isDirty = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => NotesCompanion.insert(
                 id: id,
                 folderId: folderId,
+                kind: kind,
                 title: title,
                 contentJson: contentJson,
                 preview: preview,
@@ -2629,6 +3515,10 @@ class $$NotesTableTableManager
                 trashed: trashed,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                cloudEtag: cloudEtag,
+                cloudProvider: cloudProvider,
+                cloudSyncedAt: cloudSyncedAt,
+                isDirty: isDirty,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -2637,59 +3527,98 @@ class $$NotesTableTableManager
                     (e.readTable(table), $$NotesTableReferences(db, table, e)),
               )
               .toList(),
-          prefetchHooksCallback: ({folderId = false, noteTagsRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [if (noteTagsRefs) db.noteTags],
-              addJoins:
-                  <
-                    T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic
-                    >
-                  >(state) {
-                    if (folderId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.folderId,
-                                referencedTable: $$NotesTableReferences
-                                    ._folderIdTable(db),
-                                referencedColumn: $$NotesTableReferences
-                                    ._folderIdTable(db)
-                                    .id,
-                              )
-                              as T;
-                    }
+          prefetchHooksCallback:
+              ({
+                folderId = false,
+                noteTagsRefs = false,
+                drawingPagesRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (noteTagsRefs) db.noteTags,
+                    if (drawingPagesRefs) db.drawingPages,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (folderId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.folderId,
+                                    referencedTable: $$NotesTableReferences
+                                        ._folderIdTable(db),
+                                    referencedColumn: $$NotesTableReferences
+                                        ._folderIdTable(db)
+                                        .id,
+                                  )
+                                  as T;
+                        }
 
-                    return state;
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (noteTagsRefs)
+                        await $_getPrefetchedData<
+                          NoteRow,
+                          $NotesTable,
+                          NoteTagRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$NotesTableReferences
+                              ._noteTagsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$NotesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).noteTagsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.noteId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (drawingPagesRefs)
+                        await $_getPrefetchedData<
+                          NoteRow,
+                          $NotesTable,
+                          DrawingPageRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$NotesTableReferences
+                              ._drawingPagesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$NotesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).drawingPagesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.noteId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
                   },
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (noteTagsRefs)
-                    await $_getPrefetchedData<NoteRow, $NotesTable, NoteTagRow>(
-                      currentTable: table,
-                      referencedTable: $$NotesTableReferences
-                          ._noteTagsRefsTable(db),
-                      managerFromTypedResult: (p0) =>
-                          $$NotesTableReferences(db, table, p0).noteTagsRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where((e) => e.noteId == item.id),
-                      typedResults: items,
-                    ),
-                ];
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -2706,7 +3635,11 @@ typedef $$NotesTableProcessedTableManager =
       $$NotesTableUpdateCompanionBuilder,
       (NoteRow, $$NotesTableReferences),
       NoteRow,
-      PrefetchHooks Function({bool folderId, bool noteTagsRefs})
+      PrefetchHooks Function({
+        bool folderId,
+        bool noteTagsRefs,
+        bool drawingPagesRefs,
+      })
     >;
 typedef $$TagsTableCreateCompanionBuilder =
     TagsCompanion Function({
@@ -3323,6 +4256,362 @@ typedef $$NoteTagsTableProcessedTableManager =
       NoteTagRow,
       PrefetchHooks Function({bool noteId, bool tagId})
     >;
+typedef $$DrawingPagesTableCreateCompanionBuilder =
+    DrawingPagesCompanion Function({
+      required String id,
+      required String noteId,
+      required int pageIndex,
+      Value<String> strokes,
+      Value<int> color,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$DrawingPagesTableUpdateCompanionBuilder =
+    DrawingPagesCompanion Function({
+      Value<String> id,
+      Value<String> noteId,
+      Value<int> pageIndex,
+      Value<String> strokes,
+      Value<int> color,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+final class $$DrawingPagesTableReferences
+    extends BaseReferences<_$AppDatabase, $DrawingPagesTable, DrawingPageRow> {
+  $$DrawingPagesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $NotesTable _noteIdTable(_$AppDatabase db) => db.notes.createAlias(
+    $_aliasNameGenerator(db.drawingPages.noteId, db.notes.id),
+  );
+
+  $$NotesTableProcessedTableManager get noteId {
+    final $_column = $_itemColumn<String>('note_id')!;
+
+    final manager = $$NotesTableTableManager(
+      $_db,
+      $_db.notes,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_noteIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$DrawingPagesTableFilterComposer
+    extends Composer<_$AppDatabase, $DrawingPagesTable> {
+  $$DrawingPagesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get pageIndex => $composableBuilder(
+    column: $table.pageIndex,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get strokes => $composableBuilder(
+    column: $table.strokes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get color => $composableBuilder(
+    column: $table.color,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$NotesTableFilterComposer get noteId {
+    final $$NotesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.noteId,
+      referencedTable: $db.notes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotesTableFilterComposer(
+            $db: $db,
+            $table: $db.notes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DrawingPagesTableOrderingComposer
+    extends Composer<_$AppDatabase, $DrawingPagesTable> {
+  $$DrawingPagesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get pageIndex => $composableBuilder(
+    column: $table.pageIndex,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get strokes => $composableBuilder(
+    column: $table.strokes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get color => $composableBuilder(
+    column: $table.color,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$NotesTableOrderingComposer get noteId {
+    final $$NotesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.noteId,
+      referencedTable: $db.notes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotesTableOrderingComposer(
+            $db: $db,
+            $table: $db.notes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DrawingPagesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DrawingPagesTable> {
+  $$DrawingPagesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get pageIndex =>
+      $composableBuilder(column: $table.pageIndex, builder: (column) => column);
+
+  GeneratedColumn<String> get strokes =>
+      $composableBuilder(column: $table.strokes, builder: (column) => column);
+
+  GeneratedColumn<int> get color =>
+      $composableBuilder(column: $table.color, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$NotesTableAnnotationComposer get noteId {
+    final $$NotesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.noteId,
+      referencedTable: $db.notes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.notes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DrawingPagesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DrawingPagesTable,
+          DrawingPageRow,
+          $$DrawingPagesTableFilterComposer,
+          $$DrawingPagesTableOrderingComposer,
+          $$DrawingPagesTableAnnotationComposer,
+          $$DrawingPagesTableCreateCompanionBuilder,
+          $$DrawingPagesTableUpdateCompanionBuilder,
+          (DrawingPageRow, $$DrawingPagesTableReferences),
+          DrawingPageRow,
+          PrefetchHooks Function({bool noteId})
+        > {
+  $$DrawingPagesTableTableManager(_$AppDatabase db, $DrawingPagesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DrawingPagesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DrawingPagesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DrawingPagesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> noteId = const Value.absent(),
+                Value<int> pageIndex = const Value.absent(),
+                Value<String> strokes = const Value.absent(),
+                Value<int> color = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DrawingPagesCompanion(
+                id: id,
+                noteId: noteId,
+                pageIndex: pageIndex,
+                strokes: strokes,
+                color: color,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String noteId,
+                required int pageIndex,
+                Value<String> strokes = const Value.absent(),
+                Value<int> color = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => DrawingPagesCompanion.insert(
+                id: id,
+                noteId: noteId,
+                pageIndex: pageIndex,
+                strokes: strokes,
+                color: color,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$DrawingPagesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({noteId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (noteId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.noteId,
+                                referencedTable: $$DrawingPagesTableReferences
+                                    ._noteIdTable(db),
+                                referencedColumn: $$DrawingPagesTableReferences
+                                    ._noteIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$DrawingPagesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DrawingPagesTable,
+      DrawingPageRow,
+      $$DrawingPagesTableFilterComposer,
+      $$DrawingPagesTableOrderingComposer,
+      $$DrawingPagesTableAnnotationComposer,
+      $$DrawingPagesTableCreateCompanionBuilder,
+      $$DrawingPagesTableUpdateCompanionBuilder,
+      (DrawingPageRow, $$DrawingPagesTableReferences),
+      DrawingPageRow,
+      PrefetchHooks Function({bool noteId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3334,4 +4623,6 @@ class $AppDatabaseManager {
   $$TagsTableTableManager get tags => $$TagsTableTableManager(_db, _db.tags);
   $$NoteTagsTableTableManager get noteTags =>
       $$NoteTagsTableTableManager(_db, _db.noteTags);
+  $$DrawingPagesTableTableManager get drawingPages =>
+      $$DrawingPagesTableTableManager(_db, _db.drawingPages);
 }

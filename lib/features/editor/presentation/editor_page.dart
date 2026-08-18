@@ -10,19 +10,60 @@ import '../../../core/providers/database_providers.dart';
 import '../../../core/utils/date_formats.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../data/database/app_database.dart';
+import '../../canvas/presentation/notebook_editor.dart';
 
-/// Note editor. The `contentJson` column stores a Quill Delta — the
-/// operational model used by `flutter_quill`. We keep the controller in
-/// memory and persist on a debounced flush.
-class EditorPage extends ConsumerStatefulWidget {
+/// Note editor. Routes to the text editor or the drawing notebook depending
+/// on the note's [kind] field (default 'text').
+class EditorPage extends ConsumerWidget {
   const EditorPage({required this.noteId, super.key});
   final String noteId;
 
   @override
-  ConsumerState<EditorPage> createState() => _EditorPageState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final noteAsync = ref.watch(_noteByIdProvider(noteId));
+    return noteAsync.when(
+      loading: () => const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      ),
+      error: (e, _) => Scaffold(
+        appBar: AppBar(),
+        body: Center(child: Text('Error: $e')),
+      ),
+      data: (note) {
+        if (note == null) {
+          return Scaffold(
+            appBar: AppBar(),
+            body: const Center(child: Text('Note not found')),
+          );
+        }
+        if (note.kind == 'drawing') {
+          return _DrawingEditorScaffold(note: note);
+        }
+        return _TextEditorScaffold(note: note);
+      },
+    );
+  }
 }
 
-class _EditorPageState extends ConsumerState<EditorPage> {
+/// Bridges a [NoteRow] lookup into a Provider so the editor rebuilds when
+/// the row changes (rename, archive, etc.).
+final _noteByIdProvider =
+    StreamProvider.family.autoDispose<NoteRow?, String>((ref, id) {
+  return ref.watch(notesDaoProvider).watchById(id);
+});
+
+// ---------------- Text editor (existing, lifted into a scaffold) ----------------
+
+class _TextEditorScaffold extends ConsumerStatefulWidget {
+  const _TextEditorScaffold({required this.note});
+  final NoteRow note;
+
+  @override
+  ConsumerState<_TextEditorScaffold> createState() =>
+      _TextEditorScaffoldState();
+}
+
+class _TextEditorScaffoldState extends ConsumerState<_TextEditorScaffold> {
   final _titleController = TextEditingController();
   final _focusNode = FocusNode();
   final _scrollController = ScrollController();
@@ -31,8 +72,6 @@ class _EditorPageState extends ConsumerState<EditorPage> {
   Timer? _debounce;
   String _lastSavedTitle = '';
   String _lastSavedJson = '[]';
-  NoteRow? _note;
-  bool _loading = true;
 
   @override
   void initState() {
@@ -42,46 +81,30 @@ class _EditorPageState extends ConsumerState<EditorPage> {
 
   Future<void> _load() async {
     final dao = ref.read(notesDaoProvider);
-    final note = await dao.findById(widget.noteId);
-    if (note == null) {
-      if (mounted) setState(() => _loading = false);
-      return;
-    }
-
+    final note = await dao.findById(widget.note.id);
+    if (note == null || !mounted) return;
     final content = note.contentJson;
     final delta = _decodeDelta(content);
     final controller = fq.QuillController(
       document: delta ?? fq.Document(),
       selection: const TextSelection.collapsed(offset: 0),
     );
-
     controller.addListener(_scheduleAutosave);
-
-    if (mounted) {
-      setState(() {
-        _note = note;
-        _titleController.text = note.title;
-        _titleController.addListener(_scheduleAutosave);
-        _quill = controller;
-        _lastSavedTitle = note.title;
-        _lastSavedJson = content;
-        _loading = false;
-      });
-    }
+    setState(() {
+      _quill = controller;
+      _titleController.text = note.title;
+      _titleController.addListener(_scheduleAutosave);
+      _lastSavedTitle = note.title;
+      _lastSavedJson = content;
+    });
   }
 
   fq.Document? _decodeDelta(String json) {
     try {
       final decoded = jsonDecode(json);
-      if (decoded is List) {
-        return fq.Document.fromJson(decoded);
-      }
+      if (decoded is List) return fq.Document.fromJson(decoded);
     } catch (_) {}
     return null;
-  }
-
-  String _encodeDelta(fq.Document doc) {
-    return jsonEncode(doc.toDelta().toJson());
   }
 
   void _scheduleAutosave() {
@@ -91,24 +114,20 @@ class _EditorPageState extends ConsumerState<EditorPage> {
 
   Future<void> _save() async {
     final controller = _quill;
-    final note = _note;
-    if (controller == null || note == null) return;
-
+    final note = widget.note;
+    if (controller == null) return;
     final title = _titleController.text.trim().isEmpty
         ? 'Untitled'
         : _titleController.text;
-    final json = _encodeDelta(controller.document);
+    final json = jsonEncode(controller.document.toDelta().toJson());
     final preview = controller.document.toPlainText().trim().split('\n').take(3).join(' ');
-
     if (title == _lastSavedTitle && json == _lastSavedJson) return;
-
     await ref.read(notesDaoProvider).updateContent(
           id: note.id,
           title: title,
           contentJson: json,
           preview: preview.length > 240 ? preview.substring(0, 240) : preview,
         );
-
     _lastSavedTitle = title;
     _lastSavedJson = json;
   }
@@ -128,22 +147,12 @@ class _EditorPageState extends ConsumerState<EditorPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+    final quill = _quill;
+    if (quill == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    if (_note == null || _quill == null) {
-      return Scaffold(
-        appBar: AppBar(),
-        body: const Center(child: Text('Note not found')),
-      );
-    }
-
+    final note = widget.note;
     final colorScheme = Theme.of(context).colorScheme;
-    final note = _note!;
-    final quill = _quill!;
-
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -169,21 +178,6 @@ class _EditorPageState extends ConsumerState<EditorPage> {
               await ref
                   .read(notesDaoProvider)
                   .setPinned(note.id, !note.pinned);
-              final updated = await ref.read(notesDaoProvider).findById(note.id);
-              if (mounted && updated != null) setState(() => _note = updated);
-            },
-          ),
-          IconButton(
-            tooltip: note.archived ? 'Unarchive' : 'Archive',
-            icon: Icon(
-              note.archived ? Icons.archive_rounded : Icons.archive_outlined,
-            ),
-            onPressed: () async {
-              await ref
-                  .read(notesDaoProvider)
-                  .setArchived(note.id, !note.archived);
-              final updated = await ref.read(notesDaoProvider).findById(note.id);
-              if (mounted && updated != null) setState(() => _note = updated);
             },
           ),
           PopupMenuButton<String>(
@@ -197,8 +191,8 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                   if (context.mounted) context.pop();
               }
             },
-            itemBuilder: (_) => [
-              const PopupMenuItem(
+            itemBuilder: (_) => const [
+              PopupMenuItem(
                 value: 'trash',
                 child: ListTile(
                   leading: Icon(Icons.delete_outline),
@@ -206,7 +200,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'delete',
                 child: ListTile(
                   leading: Icon(Icons.delete_forever_outlined),
@@ -326,6 +320,150 @@ class _Toolbar extends StatelessWidget {
             showListCheck: true,
             showIndent: false,
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------- Drawing editor scaffold ----------------
+
+class _DrawingEditorScaffold extends ConsumerStatefulWidget {
+  const _DrawingEditorScaffold({required this.note});
+  final NoteRow note;
+
+  @override
+  ConsumerState<_DrawingEditorScaffold> createState() =>
+      _DrawingEditorScaffoldState();
+}
+
+class _DrawingEditorScaffoldState
+    extends ConsumerState<_DrawingEditorScaffold> {
+  final _titleController = TextEditingController();
+  Timer? _titleDebounce;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController.text = widget.note.title;
+    _titleController.addListener(_onTitleChanged);
+  }
+
+  void _onTitleChanged() {
+    _titleDebounce?.cancel();
+    _titleDebounce = Timer(const Duration(milliseconds: 600), () async {
+      await ref.read(notesDaoProvider).markDirty(widget.note.id);
+    });
+  }
+
+  @override
+  void dispose() {
+    _titleDebounce?.cancel();
+    _titleController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveTitle(String title) async {
+    final cleaned = title.trim().isEmpty ? 'Untitled notebook' : title;
+    await ref.read(notesDaoProvider).updateContent(
+          id: widget.note.id,
+          title: cleaned,
+          contentJson: widget.note.contentJson,
+          preview: widget.note.preview,
+        );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final note = widget.note;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () async {
+            await _saveTitle(_titleController.text);
+            if (context.mounted) context.pop();
+          },
+        ),
+        title: TextField(
+          controller: _titleController,
+          decoration: const InputDecoration(
+            border: InputBorder.none,
+            hintText: 'Notebook title',
+            contentPadding: EdgeInsets.zero,
+          ),
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        actions: [
+          IconButton(
+            tooltip: note.pinned ? 'Unpin' : 'Pin',
+            icon: Icon(
+              note.pinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
+            ),
+            onPressed: () async {
+              await ref
+                  .read(notesDaoProvider)
+                  .setPinned(note.id, !note.pinned);
+            },
+          ),
+          PopupMenuButton<String>(
+            onSelected: (v) async {
+              switch (v) {
+                case 'trash':
+                  await _saveTitle(_titleController.text);
+                  await ref.read(notesDaoProvider).setTrashed(note.id, true);
+                  if (context.mounted) context.pop();
+                case 'delete':
+                  await ref.read(notesDaoProvider).deletePermanently(note.id);
+                  if (context.mounted) context.pop();
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'trash',
+                child: ListTile(
+                  leading: Icon(Icons.delete_outline),
+                  title: Text('Move to trash'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuItem(
+                value: 'delete',
+                child: ListTile(
+                  leading: Icon(Icons.delete_forever_outlined),
+                  title: Text('Delete forever'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Row(
+                children: [
+                  Icon(Icons.brush_rounded,
+                      size: 16, color: colorScheme.outline),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${formatRelativeTime(note.updatedAt)} · ${note.isDirty ? "unsynced" : "synced"}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colorScheme.outline,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: NotebookEditor(noteId: widget.note.id),
+            ),
+          ],
         ),
       ),
     );

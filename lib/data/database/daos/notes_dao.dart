@@ -110,6 +110,55 @@ class NotesDao extends DatabaseAccessor<AppDatabase> with _$NotesDaoMixin {
     return (delete(notes)..where((t) => t.id.equals(id))).go();
   }
 
+  /// Mark a note as having local changes that haven't been uploaded yet.
+  /// Call this after any content edit, rename, move, etc.
+  Future<void> markDirty(String id) {
+    return (update(notes)..where((t) => t.id.equals(id))).write(
+      NotesCompanion(isDirty: const Value(true), updatedAt: Value(DateTime.now())),
+    );
+  }
+
+  /// Notes that need to be pushed to the cloud. The [provider] argument
+  /// constrains the query to a specific provider ('onedrive' / 'icloud').
+  Stream<List<NoteRow>> watchDirty({String? provider}) {
+    final query = select(notes)
+      ..where((t) => t.isDirty.equals(true) & t.trashed.equals(false));
+    if (provider != null) {
+      query.where((t) => t.cloudProvider.equals(provider));
+    }
+    query.orderBy([(t) => OrderingTerm.asc(t.updatedAt)]);
+    return query.watch();
+  }
+
+  /// Called by the sync engine after a successful upload.
+  Future<void> markSynced({
+    required String id,
+    required String etag,
+    required String provider,
+    required DateTime syncedAt,
+  }) {
+    return (update(notes)..where((t) => t.id.equals(id))).write(
+      NotesCompanion(
+        isDirty: const Value(false),
+        cloudEtag: Value(etag),
+        cloudProvider: Value(provider),
+        cloudSyncedAt: Value(syncedAt),
+      ),
+    );
+  }
+
+  /// Resets sync metadata — used when disconnecting a cloud account.
+  Future<void> clearCloudMetadata(String id) {
+    return (update(notes)..where((t) => t.id.equals(id))).write(
+      NotesCompanion(
+        cloudEtag: const Value(null),
+        cloudProvider: const Value(null),
+        cloudSyncedAt: const Value(null),
+        isDirty: const Value(true),
+      ),
+    );
+  }
+
   // --- Tags ---
 
   Stream<List<TagRow>> watchTagsForNote(String noteId) {

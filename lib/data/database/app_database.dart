@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 
+import 'daos/drawing_pages_dao.dart';
 import 'daos/folders_dao.dart';
 import 'daos/notes_dao.dart';
 import 'daos/tags_dao.dart';
@@ -16,13 +17,13 @@ part 'app_database.g.dart';
 
 /// Root database for Quill.
 ///
-/// Three tables ([Notes], [Folders], [Tags]) and one join table ([NoteTags]).
+/// Five tables: [Notes], [Folders], [Tags], [NoteTags], [DrawingPages].
 /// Heavy assets (drawings, PDFs, images) live on the file system under the
 /// app's documents directory and are exposed through repositories in the
 /// `data/repositories` layer.
 @DriftDatabase(
-  tables: [Notes, Folders, Tags, NoteTags],
-  daos: [NotesDao, FoldersDao, TagsDao],
+  tables: [Notes, Folders, Tags, NoteTags, DrawingPages],
+  daos: [NotesDao, FoldersDao, TagsDao, DrawingPagesDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
@@ -32,23 +33,42 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
-          // Seed an "Inbox" folder so first-run users have something to drag
-          // notes into.
-          await into(folders).insert(
-            FoldersCompanion.insert(
-              id: 'inbox',
-              name: 'Inbox',
-              createdAt: DateTime.now(),
-            ),
-          );
+          await _seedInbox();
+        },
+        onUpgrade: (m, from, to) async {
+          // v1 → v2: add drawing pages + cloud sync fields.
+          if (from < 2) {
+            await m.createTable(drawingPages);
+            await m.addColumn(notes, notes.kind);
+            await m.addColumn(notes, notes.cloudEtag);
+            await m.addColumn(notes, notes.cloudProvider);
+            await m.addColumn(notes, notes.cloudSyncedAt);
+            await m.addColumn(notes, notes.isDirty);
+          }
+        },
+        beforeOpen: (details) async {
+          // Enable foreign key constraints so cascading deletes work.
+          await customStatement('PRAGMA foreign_keys = ON');
         },
       );
+
+  Future<void> _seedInbox() async {
+    // Seed an "Inbox" folder so first-run users have something to drag
+    // notes into.
+    await into(folders).insert(
+      FoldersCompanion.insert(
+        id: 'inbox',
+        name: 'Inbox',
+        createdAt: DateTime.now(),
+      ),
+    );
+  }
 }
 
 LazyDatabase _openConnection() {

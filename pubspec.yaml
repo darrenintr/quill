@@ -44,6 +44,15 @@ dependencies:
   flex_color_scheme: ^8.1.1
   super_drag_and_drop: ^0.8.20
 
+  # ---- Handwriting ----
+  # perfect_freehand gives us pressure-aware, vector stroke smoothing
+  # identical to Excalidraw. Pure Dart, no platform deps.
+  perfect_freehand: ^2.5.2
+
+  # ---- Networking & auth (for OneDrive) ----
+  http: ^1.2.2
+  flutter_appauth: ^8.0.0+1
+
   # ---- Icons (Material Symbols Rounded) ----
   cupertino_icons: ^1.0.8
 

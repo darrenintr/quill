@@ -47,6 +47,8 @@ class DashboardPage extends ConsumerWidget {
             icon: const Icon(Icons.add_circle_outline_rounded),
             onSelected: (value) async {
               switch (value) {
+                case 'drawing':
+                  await _createDrawingNote(context, ref);
                 case 'folder':
                   await _createFolder(context, ref);
                 case 'tag':
@@ -54,6 +56,14 @@ class DashboardPage extends ConsumerWidget {
               }
             },
             itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'drawing',
+                child: ListTile(
+                  leading: Icon(Icons.brush_outlined),
+                  title: Text('New drawing'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
               PopupMenuItem(
                 value: 'folder',
                 child: ListTile(
@@ -120,6 +130,23 @@ class DashboardPage extends ConsumerWidget {
       createdAt: now,
       updatedAt: now,
     ));
+    if (context.mounted) context.push(AppRoutes.editorById(id));
+  }
+
+  Future<void> _createDrawingNote(BuildContext context, WidgetRef ref) async {
+    final notesDao = ref.read(notesDaoProvider);
+    final pagesDao = ref.read(drawingPagesDaoProvider);
+    final id = const Uuid().v4();
+    final now = DateTime.now();
+    await notesDao.upsert(NotesCompanion.insert(
+      id: id,
+      title: const Value('Untitled notebook'),
+      kind: const Value('drawing'),
+      createdAt: now,
+      updatedAt: now,
+    ));
+    // Seed with one blank page so the editor opens with something to draw on.
+    await pagesDao.addPage(noteId: id, pageIndex: 0);
     if (context.mounted) context.push(AppRoutes.editorById(id));
   }
 
