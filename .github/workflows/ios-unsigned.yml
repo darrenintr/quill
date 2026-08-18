@@ -1,12 +1,15 @@
 # Builds an unsigned .ipa that you can sideload onto your iPad with
 # AltStore / Sideloadly. No Apple Developer account required.
 #
-# We avoid `flutter build ios` entirely because it always validates the
-# Development Team, even with --no-codesign or --config-only. Instead we:
+# We avoid `flutter build ios --release` because it always validates the
+# Development Team. Instead we:
 #   1. Run `flutter precache --ios` to fetch the engine artifacts.
-#   2. Run `pod install` to wire up the plugin pods.
-#   3. Run `xcodebuild` directly with CODE_SIGNING_ALLOWED=NO.
-#   4. Zip the resulting .app into Payload/Runner.app and rename to .ipa.
+#   2. Run `flutter build ios --config-only --debug --no-codesign` to
+#      generate the iOS project configuration and the Podfile xcconfig
+#      without performing the actual build.
+#   3. Run `pod install` to wire up the plugin pods.
+#   4. Run `xcodebuild` directly with CODE_SIGNING_ALLOWED=NO.
+#   5. Zip the resulting .app into Payload/Runner.app and rename to .ipa.
 #
 # Triggered on: push to main, pull_request, manual dispatch.
 name: Build iOS (unsigned)
@@ -61,6 +64,12 @@ jobs:
 
       - name: Fetch iOS engine artifacts
         run: flutter precache --ios
+
+      # Generate the iOS project + Pods xcconfig. `--config-only --debug`
+      # skips team validation while still running the codegen pipeline that
+      # emits Generated.xcconfig + the CocoaPods integration.
+      - name: Configure iOS project
+        run: flutter build ios --config-only --debug --no-codesign --no-tree-shake-icons
 
       - name: Run pod install
         working-directory: ios
