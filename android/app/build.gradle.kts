@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "io.quill.quill"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -23,6 +23,11 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // flutter_appauth OAuth redirect scheme placeholder. We default to the
+        // package id; OAuth providers register a more specific scheme at runtime
+        // (e.g. msauth.<client-id>://auth on Android via custom tabs).
+        manifestPlaceholders["appAuthRedirectScheme"] = "io.quill.quill"
     }
 
     buildTypes {
