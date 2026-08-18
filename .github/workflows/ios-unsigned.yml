@@ -102,6 +102,7 @@ jobs:
           echo "Found app: $APP"
 
       - name: Package .app into unsigned .ipa
+        working-directory: ios
         run: |
           set -e
           APP="${{ steps.locate.outputs.app }}"
