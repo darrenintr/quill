@@ -61,7 +61,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  assets:
-    - assets/images/
+  # No static assets bundled yet — Material Symbols are referenced via
+  # IconData code points from the icon font that ships with the SDK.
 
   # Material Symbols outlined/rounded are referenced from code.

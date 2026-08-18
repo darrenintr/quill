@@ -43,6 +43,12 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      # Some plugins (device_info_plus, super_native_extensions) don't yet
+      # support Swift Package Manager. Disable SPM so CocoaPods handles
+      # plugin discovery instead.
+      - name: Disable Swift Package Manager
+        run: flutter config --no-enable-swift-package-manager
+
       - name: Generate Drift code
         run: dart run build_runner build --delete-conflicting-outputs
 
@@ -63,29 +69,7 @@ jobs:
           CODE_SIGN_STYLE: Manual
           DEVELOPMENT_TEAM: ''
         run: |
-          flutter build ios --release --no-codesign \
-            --export-options-plist /tmp/quill-export.plist || true
-
-          # The first attempt above will still fail because the Xcode
-          # project's CODE_SIGN_STYLE is "Automatic" by default. Workaround:
-          # build the .app via xcodebuild directly with code signing disabled.
-          if [ ! -d "build/ios/iphoneos/Runner.app" ]; then
-            echo "Falling back to raw xcodebuild..."
-            xcodebuild \
-              -workspace Runner.xcworkspace \
-              -scheme Runner \
-              -configuration Release \
-              -sdk iphoneos \
-              -destination 'generic/platform=iOS' \
-              CODE_SIGNING_ALLOWED=NO \
-              CODE_SIGNING_REQUIRED=NO \
-              CODE_SIGN_IDENTITY="" \
-              CODE_SIGN_STYLE=Manual \
-              DEVELOPMENT_TEAM="" \
-              build
-          fi
-
-          ls -la build/ios/iphoneos/ 2>&1 || true
+          flutter build ios --release --no-codesign
 
       - name: Locate .app bundle
         id: locate
