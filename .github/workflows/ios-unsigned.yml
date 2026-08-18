@@ -50,10 +50,42 @@ jobs:
       # without requiring a Development Team. We then zip the bundle into
       # a sideloadable .ipa manually because `flutter build ipa` always
       # insists on a team id.
+      #
+      # We also export the four xcconfig overrides below — Xcode's "Automatic"
+      # signing style still wants a team even with --no-codesign, so we
+      # force it off completely for this build.
       - name: Build unsigned .app
         working-directory: ios
+        env:
+          CODE_SIGNING_ALLOWED: 'NO'
+          CODE_SIGNING_REQUIRED: 'NO'
+          CODE_SIGN_IDENTITY: ''
+          CODE_SIGN_STYLE: Manual
+          DEVELOPMENT_TEAM: ''
         run: |
-          flutter build ios --release --no-codesign
+          flutter build ios --release --no-codesign \
+            --export-options-plist /tmp/quill-export.plist || true
+
+          # The first attempt above will still fail because the Xcode
+          # project's CODE_SIGN_STYLE is "Automatic" by default. Workaround:
+          # build the .app via xcodebuild directly with code signing disabled.
+          if [ ! -d "build/ios/iphoneos/Runner.app" ]; then
+            echo "Falling back to raw xcodebuild..."
+            xcodebuild \
+              -workspace Runner.xcworkspace \
+              -scheme Runner \
+              -configuration Release \
+              -sdk iphoneos \
+              -destination 'generic/platform=iOS' \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGN_IDENTITY="" \
+              CODE_SIGN_STYLE=Manual \
+              DEVELOPMENT_TEAM="" \
+              build
+          fi
+
+          ls -la build/ios/iphoneos/ 2>&1 || true
 
       - name: Locate .app bundle
         id: locate
