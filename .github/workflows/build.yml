@@ -1,0 +1,60 @@
+# Cross-platform CI — builds Linux + Android APKs on every push.
+# iOS lives in its own workflow (ios-*.yml) because it needs a Mac runner.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: Linux desktop
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.2
+          cache: true
+      - run: flutter pub get
+      - run: dart run build_runner build --delete-conflicting-outputs
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+      - run: flutter test
+      - run: flutter build linux --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: quill-linux
+          path: build/linux/x64/release/bundle
+          retention-days: 14
+
+  android:
+    name: Android APK
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.2
+          cache: true
+      - run: flutter pub get
+      - run: dart run build_runner build --delete-conflicting-outputs
+      - run: flutter test
+      - run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: quill-android-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 14

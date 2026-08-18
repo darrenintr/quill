@@ -1,0 +1,163 @@
+# Builds a signed .ipa suitable for upload to TestFlight / the App Store.
+#
+# Requires the following GitHub repository secrets to be set (Settings
+# → Secrets and variables → Actions):
+#
+#   APPSTORE_ISSUER_ID         — App Store Connect API issuer UUID
+#   APPSTORE_KEY_ID            — App Store Connect API key ID
+#   APPSTORE_API_KEY_BASE64    — base64 of the .p8 file you downloaded
+#                                from App Store Connect
+#   IOS_DIST_CERT_BASE64       — base64 of your Distribution certificate
+#                                (.p12) exported from Keychain
+#   IOS_DIST_CERT_PASSWORD     — password of the .p12
+#   IOS_PROVISIONING_PROFILE_BASE64
+#                              — base64 of the .mobileprovision for the
+#                                bundle id io.quill.quill
+#
+# Optional:
+#   IOS_TEAM_ID                — 10-char Apple Developer Team ID (used as
+#                                default if not present in the .p12)
+#
+# Triggered on: push to main, tags, manual dispatch.
+name: Build iOS (signed)
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-ios-signed:
+    name: Build signed IPA + upload to TestFlight
+    runs-on: macos-14
+
+    env:
+      PUB_CACHE: ${{ github.workspace }}/.pub-cache
+      FLUTTER_ROOT: ${{ github.workspace }}/flutter
+      WORK_DIR: ${{ github.workspace }}/build/work
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.2
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate Drift code
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Prepare keychain and signing materials
+        env:
+          IOS_DIST_CERT_BASE64: ${{ secrets.IOS_DIST_CERT_BASE64 }}
+          IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          set -e
+          mkdir -p "$WORK_DIR"
+          KEYCHAIN_PATH="$WORK_DIR/quill.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
+
+          # 1. Recreate a throw-away keychain so we don't pollute the runner.
+          security delete-keychain "$KEYCHAIN_PATH" 2>/dev/null || true
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 3600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH"
+          security set-keychain-settings -h "$KEYCHAIN_PATH"
+
+          # 2. Import the distribution certificate (.p12).
+          CERT_PATH="$WORK_DIR/dist.p12"
+          echo "$IOS_DIST_CERT_BASE64" | base64 --decode > "$CERT_PATH"
+          security import "$CERT_PATH" \
+            -P "$IOS_DIST_CERT_PASSWORD" \
+            -A -t cert -f pkcs12 \
+            -k "$KEYCHAIN_PATH"
+
+          # 3. Install the provisioning profile so Xcode can find it.
+          PROFILE_PATH="$HOME/Library/MobileDevice/Provisioning Profiles/quill.mobileprovision"
+          mkdir -p "$(dirname "$PROFILE_PATH")"
+          echo "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PROFILE_PATH"
+
+          # 4. Make sure Flutter uses our keychain by exporting vars.
+          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
+          echo "KEYCHAIN_PASSWORD=$KEYCHAIN_PASSWORD" >> "$GITHUB_ENV"
+          echo "MATCH_PASSWORD=$IOS_DIST_CERT_PASSWORD" >> "$GITHUB_ENV"
+
+      - name: Configure export options
+        run: |
+          cat > ios/ExportOptions.plist <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>teamID</key>
+            <string>${{ secrets.IOS_TEAM_ID }}</string>
+            <key>uploadSymbols</key>
+            <true/>
+            <key>uploadBitcode</key>
+            <false/>
+          </dict>
+          </plist>
+          PLIST
+
+      - name: Build signed IPA
+        working-directory: ios
+        env:
+          KEYCHAIN_PATH: ${{ env.KEYCHAIN_PATH }}
+          KEYCHAIN_PASSWORD: ${{ env.KEYCHAIN_PASSWORD }}
+        run: |
+          set -e
+          flutter build ipa --release \
+            --export-options-plist=ios/ExportOptions.plist
+
+      - name: Locate artifacts
+        id: locate
+        working-directory: ios
+        run: |
+          set -e
+          IPA="$(find build/ios -maxdepth 4 -name '*.ipa' -print -quit)"
+          echo "ipa=$IPA" >> "$GITHUB_OUTPUT"
+          echo "Found IPA: $IPA"
+
+      - name: Upload signed IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: quill-ios-signed
+          path: ${{ steps.locate.outputs.ipa }}
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload to TestFlight
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        env:
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_API_KEY_BASE64: ${{ secrets.APPSTORE_API_KEY_BASE64 }}
+        run: |
+          set -e
+          API_KEY_PATH="$WORK_DIR/appstore_api_key.p8"
+          echo "$APPSTORE_API_KEY_BASE64" | base64 --decode > "$API_KEY_PATH"
+
+          # xcrun altool is the lightweight uploader (no full Xcode
+          # application loader needed). It accepts the IPA directly.
+          xcrun altool --upload-app \
+            --type ios \
+            --file "${{ steps.locate.outputs.ipa }}" \
+            --apiKey "$APPSTORE_KEY_ID" \
+            --apiIssuer "$APPSTORE_ISSUER_ID" \
+            --show-progress
