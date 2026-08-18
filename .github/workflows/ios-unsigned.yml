@@ -1,5 +1,5 @@
 # Builds an unsigned .ipa that you can sideload onto your iPad with
-# AltStore / Sideloadly / Xcode Devices. No Apple Developer account needed.
+# AltStore / Sideloadly. No Apple Developer account required.
 #
 # Triggered on: push to main, pull_request, manual dispatch.
 name: Build iOS (unsigned)
@@ -16,10 +16,9 @@ permissions:
 jobs:
   build-ios-unsigned:
     name: Build unsigned IPA
-    runs-on: macos-14   # Apple Silicon runner; Xcode 15+
+    runs-on: macos-14   # Apple Silicon runner with Xcode 15+
 
     env:
-      # Speed up Flutter & Gradle downloads inside the runner.
       PUB_CACHE: ${{ github.workspace }}/.pub-cache
       FLUTTER_ROOT: ${{ github.workspace }}/flutter
 
@@ -47,38 +46,51 @@ jobs:
       - name: Generate Drift code
         run: dart run build_runner build --delete-conflicting-outputs
 
-      - name: Build unsigned IPA
+      # --no-codesign on `flutter build ios` produces a release .app bundle
+      # without requiring a Development Team. We then zip the bundle into
+      # a sideloadable .ipa manually because `flutter build ipa` always
+      # insists on a team id.
+      - name: Build unsigned .app
         working-directory: ios
         run: |
-          # --no-codesign produces an .xcarchive + .ipa without requiring
-          # any provisioning profiles. The result is installable via
-          # AltStore / Sideloadly for personal testing.
-          flutter build ipa --release --no-codesign
+          flutter build ios --release --no-codesign
 
-      - name: Locate artifacts
+      - name: Locate .app bundle
         id: locate
         working-directory: ios
         run: |
           set -e
-          IPA="$(find build/ios -maxdepth 4 -name '*.ipa' -print -quit)"
-          ARCHIVE="$(find build/ios -maxdepth 4 -name 'Runner.xcarchive' -type d -print -quit)"
-          echo "ipa=$IPA"  >> "$GITHUB_OUTPUT"
-          echo "archive=$ARCHIVE" >> "$GITHUB_OUTPUT"
-          echo "Found IPA: $IPA"
-          echo "Found archive: $ARCHIVE"
+          APP="$(find build/ios -maxdepth 5 -name 'Runner.app' -type d -print -quit)"
+          echo "app=$APP" >> "$GITHUB_OUTPUT"
+          echo "Found app: $APP"
 
-      - name: Upload IPA
+      - name: Package .app into unsigned .ipa
+        working-directory: ios
+        run: |
+          set -e
+          APP="${{ steps.locate.outputs.app }}"
+          OUT="$GITHUB_WORKSPACE/quill-unsigned.ipa"
+
+          # `xcrun` knows how to assemble the iOS App Store package layout
+          # (Payload/Runner.app) into a single zip — same format the App
+          # Store accepts, so AltStore / Sideloadly will install it fine.
+          TMP="$(mktemp -d)"
+          mkdir -p "$TMP/Payload"
+          cp -R "$APP" "$TMP/Payload/Runner.app"
+
+          # /Applications is a symlink on the runner; rsync preserves the
+          # executable bit which cp sometimes loses for Mach-O files.
+          rsync -a --delete "$TMP/Payload/" "$OUT.partial/" 2>/dev/null || \
+            cp -R "$TMP/Payload" "$OUT.partial/"
+          (cd "$TMP" && zip -qr "$OUT" Payload)
+
+          ls -lh "$OUT"
+          echo "Wrote unsigned IPA: $OUT"
+
+      - name: Upload unsigned IPA
         uses: actions/upload-artifact@v4
         with:
           name: quill-ios-unsigned
-          path: ${{ steps.locate.outputs.ipa }}
+          path: quill-unsigned.ipa
           if-no-files-found: error
           retention-days: 30
-
-      - name: Upload xcarchive
-        uses: actions/upload-artifact@v4
-        with:
-          name: quill-ios-xcarchive
-          path: ${{ steps.locate.outputs.archive }}
-          if-no-files-found: warn
-          retention-days: 7
